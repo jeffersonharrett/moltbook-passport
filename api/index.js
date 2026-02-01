@@ -1,15 +1,18 @@
 // index.js - Moltbook Passport Verifier using Hono
 import { Hono } from 'hono';
-import { env } from 'hono/adapter';          // Used to safely read environment variables
 import axios from 'axios';
 
 const app = new Hono();
 
-// Read your App Key from environment variables (set this in Vercel project settings)
-const MOLTBOOK_APP_KEY = env('MOLTBOOK_APP_KEY', process.env.MOLTBOOK_APP_KEY);
+const MOLTBOOK_APP_KEY = process.env.MOLTBOOK_APP_KEY || '';
 
-// Temporary fallback for testing when you don't have the real key yet
-const USE_MOCK = !MOLTBOOK_APP_KEY || MOLTBOOK_APP_KEY.trim() === '';
+// Safe trim
+const trimmedKey = (MOLTBOOK_APP_KEY || '').trim();
+const USE_MOCK = trimmedKey === '';
+
+if (USE_MOCK) {
+  console.log('[DEBUG] Mock mode enabled');
+}
 
 // Health check route (shown when accessing the root path)
 app.get('/', (c) => {
