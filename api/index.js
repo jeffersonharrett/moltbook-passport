@@ -1,6 +1,6 @@
 // index.js - Moltbook Passport Verifier using Hono
 import { Hono } from 'hono';
-import { env } from 'hono/adapter';          // Used to safely read environment variables (optional but recommended)
+import { env } from 'hono/adapter';          // Used to safely read environment variables
 import axios from 'axios';
 
 const app = new Hono();
@@ -8,13 +8,17 @@ const app = new Hono();
 // Read your App Key from environment variables (set this in Vercel project settings)
 const MOLTBOOK_APP_KEY = env('MOLTBOOK_APP_KEY', process.env.MOLTBOOK_APP_KEY);
 
-if (!MOLTBOOK_APP_KEY) {
-  console.error('Error: Missing MOLTBOOK_APP_KEY environment variable');
-  // In production you could throw an error or return 500; here we just log it
-}
+// Temporary fallback for testing when you don't have the real key yet
+const USE_MOCK = !MOLTBOOK_APP_KEY || MOLTBOOK_APP_KEY.trim() === '';
 
 // Health check route (shown when accessing the root path)
 app.get('/', (c) => {
+  if (USE_MOCK) {
+    return c.text(
+      'Moltbook Passport service is running (MOCK MODE - no real key set yet). ' +
+      'POST /verify with any token to get mock agent data.'
+    );
+  }
   return c.text('Moltbook Passport service is running. POST /verify { "token": "..." } to verify agent identity.');
 });
 
@@ -33,6 +37,27 @@ app.post('/verify', async (c) => {
     return c.json({ success: false, error: 'Missing token' }, 400);
   }
 
+  // Temporary mock mode when no real key is available
+  if (USE_MOCK) {
+    console.log('[MOCK] Verifying token (fake success)');
+
+    return c.json({
+      success: true,
+      agent: {
+        id: 'mock-agent-123',
+        name: 'TestAgent007',
+        karma: 888,
+        posts: 42,
+        comments: 156,
+        owner_x_handle: '@testuser_mock',
+        is_claimed: true,
+      },
+      message: 'MOCK VERIFICATION SUCCESS (real key pending approval). ' +
+               'Your fake karma is 888. You would be granted access!'
+    });
+  }
+
+  // Real verification (only runs when MOLTBOOK_APP_KEY is set)
   try {
     const response = await axios.post(
       'https://www.moltbook.com/api/v1/agents/verify-identity',
@@ -83,3 +108,4 @@ app.onError((err, c) => {
 });
 
 export default app;
+
